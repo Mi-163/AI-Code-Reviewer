@@ -1,44 +1,77 @@
+import os
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
+import google.generativeai as genai
+from dotenv import load_dotenv
+
+
+# This opens .env file and secretly loads your API key
+load_dotenv()
+api_key = os.getenv("GEMINI_API_KEY")
+
+# Configure the AI engine
+genai.configure(api_key=api_key)
+model = genai.GenerativeModel('gemini-2.5-flash')
 
 # Initialize the application
 app = FastAPI(title="AI Code Reviewer API")
 
-# cors- Allow the frontend (port 3000) to communicate with this backend
+# cors
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["http://localhost:3000"],
     allow_credentials=True,
-    allow_methods=["*"],  # Allows all actions (GET, POST, etc.)
+    allow_methods=["*"],
     allow_headers=["*"],
 )
 
 # structure
-# Define exactly what data is expected to receive from the frontend
 
 
 class CodeRequest(BaseModel):
     code: str
     language: str = "auto"
 
-# endpoints
+# engine
 
 
 @app.get("/")
 def read_root():
     return {"status": "Backend Engine is Online!"}
 
-# bridge connection
-
 
 @app.post("/analyze")
-def analyze_code(request: CodeRequest):
-    # For now, we will just measure the length of the code to prove it arrived
-    character_count = len(request.code)
+async def analyze_code(request: CodeRequest):
+    # Don't analyze empty code
+    if not request.code.strip():
+        return {"status": "error", "message": "No code provided."}
 
-    return {
-        "status": "success",
-        "message": "Code successfully received by the Python engine!",
-        "characters_received": character_count
-    }
+    try:
+        # construct a highly specific set of instructions for the AI
+        prompt = f"""
+        You are an expert Senior Software Engineer. Please review the following code.
+        Focus on three things:
+        1. Syntax and Style: Are there any formatting issues or naming mistakes?
+        2. Security: Are there any vulnerabilities (like hardcoded passwords)?
+        3. Logic & Performance: Are there edge cases not handled, or inefficient loops?
+
+        Keep your feedback structured, professional, and easy to read.
+
+        Code to review:
+        {request.code}
+        """
+
+        # send the package to Google's servers
+        response = model.generate_content(prompt)
+
+        # 3.  send the AI's answer back to your frontend
+        return {
+            "status": "success",
+            "message": "AI Analysis Complete",
+            "ai_feedback": response.text
+        }
+
+    except Exception as e:
+        # If the API fails, catch the error so the server doesn't crash
+        return {"status": "error", "message": str(e)}

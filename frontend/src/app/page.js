@@ -74,16 +74,26 @@ export default function Home() {
           </button>
         </div>
 
-        {/* The Results Dashboard  */}
-        {/* If 'results' exists in  memory, draw this box on the screen */}
+        {/* Results Dashboard  */}
         {results && (
-          <div className="mt-8 bg-slate-800 p-6 rounded-xl border border-green-500/30">
-            <h2 className="text-2xl font-bold text-green-400 mb-2">Analysis Complete</h2>
-            <p className="text-slate-300">Status: {results.status}</p>
-            <p className="text-slate-300">{results.message}</p>
-            <p className="text-slate-300 font-mono mt-2 bg-slate-900 p-2 rounded">
-              Characters processed: {results.characters_received}
-            </p>
+          <div className="mt-8 bg-slate-800 p-6 rounded-xl border border-blue-500/30 shadow-2xl">
+            <h2 className="text-2xl font-bold text-blue-400 mb-4">
+              {results.status === "success" ? "Analysis Complete" : "Analysis Error"}
+            </h2>
+
+            {/* If we get an error (like a 429 quota limit), show it in red */}
+            {results.status === "error" && (
+              <p className="text-red-400 bg-red-900/20 p-4 rounded border border-red-800">
+                {results.message}
+              </p>
+            )}
+
+            {/* If the AI replies successfully, show its feedback beautifully formatted */}
+            {results.ai_feedback && (
+              <div className="whitespace-pre-wrap text-slate-300 bg-slate-900 p-6 rounded-lg border border-slate-700 font-mono text-sm leading-relaxed overflow-x-auto">
+                {results.ai_feedback}
+              </div>
+            )}
           </div>
         )}
 
