@@ -1,13 +1,15 @@
 "use client";
 
-import { useState } from "react";
+
+import { useState, useRef } from "react";
 
 export default function Home() {
   const [code, setCode] = useState("");
   const [results, setResults] = useState(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
 
-  // --- NEW: The File Reader Function ---
+  const isRequestInFlight = useRef(false); // declare lock
+  //  File Reader Function
   const handleFileUpload = (e) => {
     // Grab the actual file the user selected
     const file = e.target.files[0];
@@ -26,9 +28,13 @@ export default function Home() {
     reader.readAsText(file);
   };
 
-  // The API Bridge Function 
+  // The API Bridge Function
+  // add guard and lock 
   const handleAnalyze = async () => {
-    if (!code.trim()) return;
+    if (!code.trim() || isRequestInFlight.current) return;
+
+    isRequestInFlight.current = true; // lock
+
 
     setIsAnalyzing(true);
     setResults(null);
@@ -49,6 +55,7 @@ export default function Home() {
       alert("Failed to connect to the backend engine.");
     } finally {
       setIsAnalyzing(false);
+      isRequestInFlight.current = false; // unlock door when finished
     }
   };
 

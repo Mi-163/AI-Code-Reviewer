@@ -8,16 +8,33 @@ from dotenv import load_dotenv
 
 # This opens .env file and secretly loads your API key
 load_dotenv()
-api_key = os.getenv("GEMINI_API_KEY")
+genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
 
-# Configure the AI engine
-genai.configure(api_key=api_key)
-model = genai.GenerativeModel('gemini-2.5-flash')
+# absolute System Instructions
+system_rules = """
+You are an expert Senior Software Engineer and Code Reviewer. 
+First, evaluate the provided text. 
 
-# Initialize the application
-app = FastAPI(title="AI Code Reviewer API")
+IF the text is clearly NOT programming code, script, or technical markup, you must reject it. 
+Reply EXACTLY with this phrase and nothing else:
+"Error: The provided input does not appear to be valid code. Please upload or paste a recognized programming language."
 
-# cors
+IF the text IS recognized code, please review it. Focus on three things:
+1. Syntax and Style: Are there any formatting issues or naming mistakes?
+2. Security: Are there any vulnerabilities (like hardcoded passwords)?
+3. Logic & Performance: Are there edge cases not handled, or inefficient loops?
+
+Keep your feedback structured, professional, and easy to read.
+"""
+
+#  Bake the system instructions directly into the model's core brain
+model = genai.GenerativeModel(
+    'gemini-2.5-flash',
+    system_instruction=system_rules
+)
+
+app = FastAPI()
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["http://localhost:3000"],
@@ -26,14 +43,10 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# structure
-
 
 class CodeRequest(BaseModel):
     code: str
     language: str = "auto"
-
-# engine
 
 
 @app.get("/")
@@ -43,36 +56,16 @@ def read_root():
 
 @app.post("/analyze")
 async def analyze_code(request: CodeRequest):
-    # Don't analyze empty code
     if not request.code.strip():
         return {"status": "error", "message": "No code provided."}
 
     try:
-        # construct a highly specific set of instructions for the AI
+        final_input = f"Review this {request.language} code:\n```\n{request.code}\n```"
+        response = model.generate_content(
+            final_input,
+            request_options={"retry": None}
+        )
 
-        prompt = f"""
-        You are an expert Senior Software Engineer and Code Reviewer. 
-        First, evaluate the following text. 
-
-        IF the text is clearly NOT programming code, script, or technical markup (e.g., it is a recipe, a poem, random letters, or a normal conversational paragraph), you must reject it. 
-        Reply EXACTLY with this phrase and nothing else:
-        "Error: The provided input does not appear to be valid code. Please upload or paste a recognized programming language."
-
-        IF the text IS recognized code, please review it. Focus on three things:
-        1. Syntax and Style: Are there any formatting issues or naming mistakes?
-        2. Security: Are there any vulnerabilities (like hardcoded passwords)?
-        3. Logic & Performance: Are there edge cases not handled, or inefficient loops?
-
-        Keep your feedback structured, professional, and easy to read.
-
-        Text to evaluate:
-        {request.code}
-        """
-
-        # send the package to Google's servers
-        response = model.generate_content(prompt)
-
-        # 3.  send the AI's answer back to your frontend
         return {
             "status": "success",
             "message": "AI Analysis Complete",
@@ -80,5 +73,4 @@ async def analyze_code(request: CodeRequest):
         }
 
     except Exception as e:
-        # If the API fails, catch the error so the server doesn't crash
         return {"status": "error", "message": str(e)}
