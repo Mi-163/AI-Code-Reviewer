@@ -61,7 +61,7 @@ async def analyze_code(request: CodeRequest):
 
     try:
         final_input = f"Review this {request.language} code:\n```\n{request.code}\n```"
-        response = model.generate_content(
+        response = await model.generate_content_async(
             final_input,
             request_options={"retry": None}
         )
