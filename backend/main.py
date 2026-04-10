@@ -49,16 +49,23 @@ async def analyze_code(request: CodeRequest):
 
     try:
         # construct a highly specific set of instructions for the AI
+
         prompt = f"""
-        You are an expert Senior Software Engineer. Please review the following code.
-        Focus on three things:
+        You are an expert Senior Software Engineer and Code Reviewer. 
+        First, evaluate the following text. 
+
+        IF the text is clearly NOT programming code, script, or technical markup (e.g., it is a recipe, a poem, random letters, or a normal conversational paragraph), you must reject it. 
+        Reply EXACTLY with this phrase and nothing else:
+        "Error: The provided input does not appear to be valid code. Please upload or paste a recognized programming language."
+
+        IF the text IS recognized code, please review it. Focus on three things:
         1. Syntax and Style: Are there any formatting issues or naming mistakes?
         2. Security: Are there any vulnerabilities (like hardcoded passwords)?
         3. Logic & Performance: Are there edge cases not handled, or inefficient loops?
 
         Keep your feedback structured, professional, and easy to read.
 
-        Code to review:
+        Text to evaluate:
         {request.code}
         """
 
