@@ -7,7 +7,10 @@ export default function Home() {
   const [code, setCode] = useState("");
   const [results, setResults] = useState(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
-  const [isCopied, setIsCopied] = useState(false); // State for the Copy button
+  const [isCopied, setIsCopied] = useState(false);
+
+  //  Tab State for the Tri-Fold Dashboard 
+  const [activeTab, setActiveTab] = useState("all");
 
   const isRequestInFlight = useRef(false);
 
@@ -28,7 +31,8 @@ export default function Home() {
     isRequestInFlight.current = true;
     setIsAnalyzing(true);
     setResults(null);
-    setIsCopied(false); // Reset copy state on new analysis
+    setIsCopied(false);
+    setActiveTab("all"); // Reset to the main dashboard view on new analysis
 
     try {
       const response = await fetch("http://localhost:8000/analyze", {
@@ -50,28 +54,61 @@ export default function Home() {
     }
   };
 
-  // Copy Function
+  //  NEW: Helper function to generate Context-Aware export text 
+  const getExportContent = () => {
+    if (!results || !results.data) return "";
+
+    let content = "";
+    if (activeTab === "all" || activeTab === "style") {
+      content += "## 🎨 Style & Formatting\n";
+      if (results.data.style_issues?.length === 0) {
+        content += "No style issues found.\n\n";
+      } else {
+        results.data.style_issues.forEach(issue => {
+          content += `- **Line ${issue.line}**: ${issue.message}\n`;
+        });
+        content += "\n";
+      }
+    }
+
+    if (activeTab === "all" || activeTab === "security") {
+      content += "## 🛡️ Security Vulnerabilities\n";
+      if (results.data.security_issues?.length === 0) {
+        content += "No security vulnerabilities detected.\n\n";
+      } else {
+        results.data.security_issues.forEach(issue => {
+          content += `- **Line ${issue.line}** [${issue.severity.toUpperCase()}]: ${issue.message}\n`;
+        });
+        content += "\n";
+      }
+    }
+
+    if (activeTab === "all" || activeTab === "logic") {
+      content += "## 🧠 AI Logic Analysis\n";
+      content += results.data.logic_review + "\n";
+    }
+
+    return content;
+  };
+
   const handleCopy = () => {
-    if (results && results.ai_feedback) {
-      navigator.clipboard.writeText(results.ai_feedback);
+    const content = getExportContent();
+    if (content) {
+      navigator.clipboard.writeText(content);
       setIsCopied(true);
-      // Change the button text back to "Copy" after 2 seconds
       setTimeout(() => setIsCopied(false), 2000);
     }
   };
 
-  // The Download Function 
   const handleDownload = () => {
-    if (results && results.ai_feedback) {
-      //  Create a "Blob" (a file-like object) containing the markdown text
-      const blob = new Blob([results.ai_feedback], { type: "text/markdown" });
-      //  Create a temporary, invisible link
+    const content = getExportContent();
+    if (content) {
+      let filename = activeTab === "all" ? "code-review.md" : `${activeTab}-review.md`;
+      const blob = new Blob([content], { type: "text/markdown" });
       const url = URL.createObjectURL(blob);
       const link = document.createElement("a");
       link.href = url;
-      //  Name the file
-      link.download = "ai-code-review.md";
-      //  Fake a click on the link to trigger the download, then clean it up
+      link.download = filename;
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
@@ -85,7 +122,7 @@ export default function Home() {
 
         <h1 className="text-4xl font-bold text-center">AI Code Reviewer</h1>
         <p className="text-center text-slate-400">
-          Paste your code below or upload a file for a complete syntax, security, and logic analysis.
+          Paste your code below or upload a file for a complete style, security, and logic analysis.
         </p>
 
         <div className="bg-slate-800 p-4 rounded-xl shadow-lg border border-slate-700">
@@ -115,15 +152,16 @@ export default function Home() {
           </button>
         </div>
 
-        {/* The Results Dashboard */}
+        {/*  The Tri-Fold Results Dashboard  */}
         {results && (
           <div className="mt-8 bg-slate-800 p-6 rounded-xl border border-blue-500/30 shadow-2xl">
-            <div className="flex justify-between items-center mb-4">
+
+            {/* Header & Buttons */}
+            <div className="flex justify-between items-center mb-6">
               <h2 className="text-2xl font-bold text-blue-400">
                 {results.status === "success" ? "Analysis Complete" : "Analysis Error"}
               </h2>
 
-              {/* --- UPDATED: The Action Buttons --- */}
               {results.status === "success" && (
                 <div className="flex gap-3">
                   <button
@@ -148,43 +186,99 @@ export default function Home() {
               </p>
             )}
 
-            {results.ai_feedback && (
-              <div className="bg-slate-900 p-6 rounded-lg border border-slate-700 overflow-x-auto space-y-4">
-                {/* The Markdown Renderer with Custom Tailwind Styling  */}
-                <ReactMarkdown
-                  components={{
-                    h3: ({ node, ...props }) => <h3 className="text-xl font-bold text-blue-300 mt-6 mb-2 border-b border-slate-700 pb-2" {...props} />,
-                    p: ({ node, ...props }) => <p className="text-slate-300 leading-relaxed mb-3" {...props} />,
-                    ul: ({ node, ...props }) => <ul className="list-disc list-outside ml-5 text-slate-300 space-y-1 mb-4" {...props} />,
-                    li: ({ node, ...props }) => <li className="pl-1" {...props} />,
-                    strong: ({ node, ...props }) => <strong className="font-semibold text-blue-100" {...props} />,
+            {/* Dashboard Content */}
+            {results.status === "success" && results.data && (
+              <>
+                {/* Filter Tabs */}
+                <div className="flex gap-2 mb-6 border-b border-slate-700 pb-2 overflow-x-auto">
+                  {['all', 'style', 'security', 'logic'].map((tab) => (
+                    <button
+                      key={tab}
+                      onClick={() => setActiveTab(tab)}
+                      className={`px-4 py-2 text-sm font-medium rounded-t-md transition-colors ${activeTab === tab
+                        ? "bg-blue-600 text-white"
+                        : "bg-slate-800 text-slate-400 hover:bg-slate-700 hover:text-slate-200"
+                        }`}
+                    >
+                      {tab.charAt(0).toUpperCase() + tab.slice(1)}
+                    </button>
+                  ))}
+                </div>
 
-                    /* Fixed Code Block Styling */
-                    pre: ({ node, ...props }) => (
-                      <div className="bg-black p-4 rounded-md overflow-x-auto my-4 border border-slate-700 shadow-inner">
-                        <pre {...props} />
+                {/* LAYER 1: STYLE ISSUES (FLAKE8) */}
+                {(activeTab === "all" || activeTab === "style") && (
+                  <div className="mb-6">
+                    <h3 className="text-lg font-semibold text-emerald-400 mb-3">🎨 Style & Formatting</h3>
+                    {results.data.style_issues?.length === 0 ? (
+                      <p className="text-slate-400 text-sm italic">No style issues found. Your code is perfectly formatted!</p>
+                    ) : (
+                      <div className="space-y-2">
+                        {results.data.style_issues?.map((issue, idx) => (
+                          <div key={idx} className="bg-emerald-900/20 border border-emerald-700/50 p-3 rounded flex gap-3 items-start">
+                            <span className="bg-emerald-900 text-emerald-300 px-2 py-0.5 rounded text-xs font-mono mt-0.5 whitespace-nowrap">Line {issue.line}</span>
+                            <span className="text-emerald-100 text-sm">{issue.message}</span>
+                          </div>
+                        ))}
                       </div>
-                    ),
-                    code: ({ node, className, children, ...props }) => {
-                      // Check if it's a block of code by looking for a language tag or newlines
-                      const match = /language-(\w+)/.exec(className || "");
-                      const isBlock = match || String(children).includes("\n");
+                    )}
+                  </div>
+                )}
 
-                      return isBlock ? (
-                        <code className={`text-slate-300 font-mono text-sm ${className || ""}`} {...props}>
-                          {children}
-                        </code>
-                      ) : (
-                        <code className="bg-slate-800 text-pink-400 px-1.5 py-0.5 rounded text-sm font-mono mx-1" {...props}>
-                          {children}
-                        </code>
-                      );
-                    }
-                  }}
-                >
-                  {results.ai_feedback}
-                </ReactMarkdown>
-              </div>
+                {/* LAYER 2: SECURITY ISSUES (BANDIT) */}
+                {(activeTab === "all" || activeTab === "security") && (
+                  <div className="mb-6">
+                    <h3 className="text-lg font-semibold text-red-400 mb-3">🛡️ Security Vulnerabilities</h3>
+                    {results.data.security_issues?.length === 0 ? (
+                      <p className="text-slate-400 text-sm italic">No security vulnerabilities detected.</p>
+                    ) : (
+                      <div className="space-y-2">
+                        {results.data.security_issues?.map((issue, idx) => (
+                          <div key={idx} className={`border p-3 rounded flex gap-3 items-start ${issue.severity === 'high' ? 'bg-red-900/20 border-red-700/50' : 'bg-yellow-900/20 border-yellow-700/50'
+                            }`}>
+                            <span className={`px-2 py-0.5 rounded text-xs font-mono mt-0.5 whitespace-nowrap ${issue.severity === 'high' ? 'bg-red-900 text-red-300' : 'bg-yellow-900 text-yellow-300'
+                              }`}>Line {issue.line}</span>
+                            <span className="text-slate-200 text-sm">{issue.message}</span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* LAYER 3: LOGIC REVIEW (GEMINI) */}
+                {(activeTab === "all" || activeTab === "logic") && (
+                  <div>
+                    <h3 className="text-lg font-semibold text-blue-400 mb-3">🧠 AI Logic Analysis</h3>
+                    <div className="bg-slate-900 p-6 rounded-lg border border-slate-700 overflow-x-auto space-y-4">
+                      <ReactMarkdown
+                        components={{
+                          h3: ({ node, ...props }) => <h3 className="text-xl font-bold text-blue-300 mt-6 mb-2 border-b border-slate-700 pb-2" {...props} />,
+                          p: ({ node, ...props }) => <p className="text-slate-300 leading-relaxed mb-3" {...props} />,
+                          ul: ({ node, ...props }) => <ul className="list-disc list-outside ml-5 text-slate-300 space-y-1 mb-4" {...props} />,
+                          li: ({ node, ...props }) => <li className="pl-1" {...props} />,
+                          strong: ({ node, ...props }) => <strong className="font-semibold text-blue-100" {...props} />,
+                          pre: ({ node, ...props }) => (
+                            <div className="bg-black p-4 rounded-md overflow-x-auto my-4 border border-slate-700 shadow-inner">
+                              <pre {...props} />
+                            </div>
+                          ),
+                          code: ({ node, className, children, ...props }) => {
+                            const match = /language-(\w+)/.exec(className || "");
+                            const isBlock = match || String(children).includes("\n");
+                            return isBlock ? (
+                              <code className={`text-slate-300 font-mono text-sm ${className || ""}`} {...props}>{children}</code>
+                            ) : (
+                              <code className="bg-slate-800 text-pink-400 px-1.5 py-0.5 rounded text-sm font-mono mx-1" {...props}>{children}</code>
+                            );
+                          }
+                        }}
+                      >
+                        {results.data.logic_review}
+                      </ReactMarkdown>
+                    </div>
+                  </div>
+                )}
+              </>
             )}
           </div>
         )}
