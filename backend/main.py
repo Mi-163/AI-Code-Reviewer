@@ -125,7 +125,7 @@ async def run_gemini(code, language):
         print(str(e))
         print("="*30 + "\n")
 
-        return f"⚠️ **AI Review Error**\n\nThe AI encountered an issue. Check your Python terminal for the exact error message."
+        return f"⚠️ **AI Review Error**\n\nThe AI encountered an issue. Check your Python terminal/render logs for the exact error message."
 
 
 @app.get("/")

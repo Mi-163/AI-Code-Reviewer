@@ -37,7 +37,7 @@ export default function Home() {
     setSeverityFilter("all"); // Reset filter on new analysis
 
     try {
-      const response = await fetch("http://localhost:8000/analyze", {
+      const response = await fetch("https://ai-code-reviewer-backend-i5x2.onrender.com/analyze", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
