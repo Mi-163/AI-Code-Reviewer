@@ -1,23 +1,24 @@
 # AI Code Reviewer 🚀
 
-A professional-grade, full-stack AI Orchestrator that performs deep analysis on Python code. It combines static analysis, security auditing, and Generative AI to provide a 360-degree review of code quality.
+A professional-grade, full-stack AI Orchestrator that performs multi-layered analysis on source code. It combines industry-standard static analysis with Generative AI to provide a 360-degree review of code quality, security, and logic across multiple programming languages.
 
 **Live Demo:** [https://ai-code-reviewer-five-pearl.vercel.app](https://ai-code-reviewer-five-pearl.vercel.app)
 
 ## ✨ Features
 
 - **Multi-Engine Analysis:**
-  - **Static Analysis:** Uses Flake8 to identify PEP 8 violations and formatting issues.
-  - **Security Auditing:** Uses Bandit to detect common security vulnerabilities.
-  - **AI Logic Review:** Integrates Google Gemini 1.5 Pro to explain logic flaws and suggest optimized solutions.
-- **Modern Dashboard:** Built with Next.js and Tailwind CSS, featuring severity-based filtering.
-- **Export Capabilities:** One-click Copy-to-Clipboard or Download as a Markdown report.
+  - **Static Analysis:** Integrated tools to identify syntax violations and formatting issues.
+  - **Security Auditing:** Scans for common vulnerabilities and unsafe coding patterns.
+  - **AI Logic Review:** Powered by **Gemini 2.5 Flash** to explain complex logic flaws and suggest optimized solutions for any programming language.
+- **Modern Dashboard:** Built with Next.js and Tailwind CSS, featuring severity-based filtering (High, Medium, Low).
+- **Export Capabilities:** One-click Copy-to-Clipboard or Download as a professional Markdown report.
+- **Responsive Design:** Optimized for both desktop and mobile viewing.
 
 ## 🛠️ Tech Stack
 
-- **Frontend:** Next.js 14, React, Tailwind CSS.
+- **Frontend:** Next.js 14, React, Tailwind CSS, React-Markdown.
 - **Backend:** FastAPI (Python), Flake8, Bandit.
-- **AI Model:** Google Gemini 1.5 Pro API.
+- **AI Model:** Google Gemini 2.5 Flash API.
 - **Hosting:** Vercel (Frontend) & Render (Backend).
 
 ---
@@ -76,4 +77,4 @@ Visit **http://localhost:3000** in your browser.
 **Mi-163** [GitHub Profile](https://github.com/Mi-163)
 
 ---
-*Developed as a full-stack portfolio project focusing on AI integration and Cloud Architecture.*
+*Developed as a full-stack portfolio project focusing on Multi-Language AI integration and Cloud Architecture.*
