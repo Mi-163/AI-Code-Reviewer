@@ -9,8 +9,9 @@ export default function Home() {
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [isCopied, setIsCopied] = useState(false);
 
-  //  Tab State for the Tri-Fold Dashboard 
   const [activeTab, setActiveTab] = useState("all");
+  // --- NEW: Severity Filter State ---
+  const [severityFilter, setSeverityFilter] = useState("all");
 
   const isRequestInFlight = useRef(false);
 
@@ -32,7 +33,8 @@ export default function Home() {
     setIsAnalyzing(true);
     setResults(null);
     setIsCopied(false);
-    setActiveTab("all"); // Reset to the main dashboard view on new analysis
+    setActiveTab("all");
+    setSeverityFilter("all"); // Reset filter on new analysis
 
     try {
       const response = await fetch("http://localhost:8000/analyze", {
@@ -54,17 +56,26 @@ export default function Home() {
     }
   };
 
-  //  NEW: Helper function to generate Context-Aware export text 
+  // Dynamically Filtered Data Arrays 
+  const filteredStyleIssues = results?.data?.style_issues?.filter(issue =>
+    severityFilter === "all" || severityFilter === "low"
+  ) || [];
+
+  const filteredSecurityIssues = results?.data?.security_issues?.filter(issue =>
+    severityFilter === "all" || issue.severity === severityFilter
+  ) || [];
+
+  //  Export content now respects the active severity filter 
   const getExportContent = () => {
     if (!results || !results.data) return "";
 
     let content = "";
     if (activeTab === "all" || activeTab === "style") {
       content += "## 🎨 Style & Formatting\n";
-      if (results.data.style_issues?.length === 0) {
-        content += "No style issues found.\n\n";
+      if (filteredStyleIssues.length === 0) {
+        content += "No style issues matching the current filter.\n\n";
       } else {
-        results.data.style_issues.forEach(issue => {
+        filteredStyleIssues.forEach(issue => {
           content += `- **Line ${issue.line}**: ${issue.message}\n`;
         });
         content += "\n";
@@ -73,10 +84,10 @@ export default function Home() {
 
     if (activeTab === "all" || activeTab === "security") {
       content += "## 🛡️ Security Vulnerabilities\n";
-      if (results.data.security_issues?.length === 0) {
-        content += "No security vulnerabilities detected.\n\n";
+      if (filteredSecurityIssues.length === 0) {
+        content += "No security vulnerabilities matching the current filter.\n\n";
       } else {
-        results.data.security_issues.forEach(issue => {
+        filteredSecurityIssues.forEach(issue => {
           content += `- **Line ${issue.line}** [${issue.severity.toUpperCase()}]: ${issue.message}\n`;
         });
         content += "\n";
@@ -103,7 +114,12 @@ export default function Home() {
   const handleDownload = () => {
     const content = getExportContent();
     if (content) {
-      let filename = activeTab === "all" ? "code-review.md" : `${activeTab}-review.md`;
+      //  Dynamic filename based on Tab and Severity Filter 
+      let tabName = activeTab === "all" ? "all" : activeTab;
+      let filterName = severityFilter !== "all" ? `-${severityFilter}` : "";
+
+      let filename = `${tabName}${filterName}-review.md`;
+
       const blob = new Blob([content], { type: "text/markdown" });
       const url = URL.createObjectURL(blob);
       const link = document.createElement("a");
@@ -122,7 +138,7 @@ export default function Home() {
 
         <h1 className="text-4xl font-bold text-center">AI Code Reviewer</h1>
         <p className="text-center text-slate-400">
-          Paste your code below or upload a file for a complete style, security, and logic analysis.
+          Paste your code below or upload a file for a complete syntax, security, and logic analysis.
         </p>
 
         <div className="bg-slate-800 p-4 rounded-xl shadow-lg border border-slate-700">
@@ -152,11 +168,9 @@ export default function Home() {
           </button>
         </div>
 
-        {/*  The Tri-Fold Results Dashboard  */}
         {results && (
           <div className="mt-8 bg-slate-800 p-6 rounded-xl border border-blue-500/30 shadow-2xl">
 
-            {/* Header & Buttons */}
             <div className="flex justify-between items-center mb-6">
               <h2 className="text-2xl font-bold text-blue-400">
                 {results.status === "success" ? "Analysis Complete" : "Analysis Error"}
@@ -186,15 +200,17 @@ export default function Home() {
               </p>
             )}
 
-            {/* Dashboard Content */}
             {results.status === "success" && results.data && (
               <>
-                {/* Filter Tabs */}
-                <div className="flex gap-2 mb-6 border-b border-slate-700 pb-2 overflow-x-auto">
+                {/* Main Filter Tabs */}
+                <div className="flex gap-2 mb-4 border-b border-slate-700 pb-2 overflow-x-auto">
                   {['all', 'style', 'security', 'logic'].map((tab) => (
                     <button
                       key={tab}
-                      onClick={() => setActiveTab(tab)}
+                      onClick={() => {
+                        setActiveTab(tab);
+                        setSeverityFilter("all"); // Reset severity when changing main tabs
+                      }}
                       className={`px-4 py-2 text-sm font-medium rounded-t-md transition-colors ${activeTab === tab
                         ? "bg-blue-600 text-white"
                         : "bg-slate-800 text-slate-400 hover:bg-slate-700 hover:text-slate-200"
@@ -205,15 +221,41 @@ export default function Home() {
                   ))}
                 </div>
 
+                {/* Context-Aware Severity Filter  */}
+                {(activeTab === "all" || activeTab === "security") && (
+                  <div className="flex gap-2 mb-6">
+                    <span className="text-slate-400 text-sm py-1 mr-2 font-medium">Filter:</span>
+                    {['all', 'high', 'medium', 'low'].map(level => (
+                      <button
+                        key={level}
+                        onClick={() => setSeverityFilter(level)}
+                        className={`px-3 py-1 text-xs font-bold rounded-full transition-all border ${severityFilter === level
+                          ? level === 'high' ? 'bg-red-600 border-red-500 text-white shadow-lg shadow-red-900/50'
+                            : level === 'medium' ? 'bg-yellow-600 border-yellow-500 text-white shadow-lg shadow-yellow-900/50'
+                              : level === 'low' ? 'bg-emerald-600 border-emerald-500 text-white shadow-lg shadow-emerald-900/50'
+                                : 'bg-blue-600 border-blue-500 text-white shadow-lg shadow-blue-900/50'
+                          : 'bg-slate-800 border-slate-600 text-slate-400 hover:bg-slate-700'
+                          }`}
+                      >
+                        {level === 'all' ? 'All' : level.charAt(0).toUpperCase() + level.slice(1)}
+                      </button>
+                    ))}
+                  </div>
+                )}
+
                 {/* LAYER 1: STYLE ISSUES (FLAKE8) */}
                 {(activeTab === "all" || activeTab === "style") && (
                   <div className="mb-6">
                     <h3 className="text-lg font-semibold text-emerald-400 mb-3">🎨 Style & Formatting</h3>
-                    {results.data.style_issues?.length === 0 ? (
-                      <p className="text-slate-400 text-sm italic">No style issues found. Your code is perfectly formatted!</p>
+                    {filteredStyleIssues.length === 0 ? (
+                      <p className="text-slate-400 text-sm italic">
+                        {results.data.style_issues?.length === 0
+                          ? "No style issues found. Your code is perfectly formatted!"
+                          : "No style issues matching the current filter."}
+                      </p>
                     ) : (
                       <div className="space-y-2">
-                        {results.data.style_issues?.map((issue, idx) => (
+                        {filteredStyleIssues.map((issue, idx) => (
                           <div key={idx} className="bg-emerald-900/20 border border-emerald-700/50 p-3 rounded flex gap-3 items-start">
                             <span className="bg-emerald-900 text-emerald-300 px-2 py-0.5 rounded text-xs font-mono mt-0.5 whitespace-nowrap">Line {issue.line}</span>
                             <span className="text-emerald-100 text-sm">{issue.message}</span>
@@ -228,14 +270,22 @@ export default function Home() {
                 {(activeTab === "all" || activeTab === "security") && (
                   <div className="mb-6">
                     <h3 className="text-lg font-semibold text-red-400 mb-3">🛡️ Security Vulnerabilities</h3>
-                    {results.data.security_issues?.length === 0 ? (
-                      <p className="text-slate-400 text-sm italic">No security vulnerabilities detected.</p>
+                    {filteredSecurityIssues.length === 0 ? (
+                      <p className="text-slate-400 text-sm italic">
+                        {results.data.security_issues?.length === 0
+                          ? "No security vulnerabilities detected."
+                          : "No vulnerabilities matching the current filter."}
+                      </p>
                     ) : (
                       <div className="space-y-2">
-                        {results.data.security_issues?.map((issue, idx) => (
-                          <div key={idx} className={`border p-3 rounded flex gap-3 items-start ${issue.severity === 'high' ? 'bg-red-900/20 border-red-700/50' : 'bg-yellow-900/20 border-yellow-700/50'
+                        {filteredSecurityIssues.map((issue, idx) => (
+                          <div key={idx} className={`border p-3 rounded flex gap-3 items-start ${issue.severity === 'high' ? 'bg-red-900/20 border-red-700/50' :
+                            issue.severity === 'medium' ? 'bg-yellow-900/20 border-yellow-700/50' :
+                              'bg-emerald-900/20 border-emerald-700/50'
                             }`}>
-                            <span className={`px-2 py-0.5 rounded text-xs font-mono mt-0.5 whitespace-nowrap ${issue.severity === 'high' ? 'bg-red-900 text-red-300' : 'bg-yellow-900 text-yellow-300'
+                            <span className={`px-2 py-0.5 rounded text-xs font-mono mt-0.5 whitespace-nowrap ${issue.severity === 'high' ? 'bg-red-900 text-red-300' :
+                              issue.severity === 'medium' ? 'bg-yellow-900 text-yellow-300' :
+                                'bg-emerald-900 text-emerald-300'
                               }`}>Line {issue.line}</span>
                             <span className="text-slate-200 text-sm">{issue.message}</span>
                           </div>

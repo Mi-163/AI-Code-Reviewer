@@ -119,9 +119,13 @@ async def run_gemini(code, language):
         )
         return response.text
     except Exception as e:
-        # If Google's servers fail, catch the error and return a markdown message
-        # instead of crashing the entire Python backend
-        return "⚠️ **AI Review Temporarily Unavailable**\n\nThe Google Gemini API is currently experiencing high demand. Your Style and Security scans have still completed successfully. Please try the Logic Review again in a few minutes."
+        #  Print the error to your terminal
+        print("\n" + "="*30)
+        print("GEMINI API ERROR REVEALED")
+        print(str(e))
+        print("="*30 + "\n")
+
+        return f"⚠️ **AI Review Error**\n\nThe AI encountered an issue. Check your Python terminal for the exact error message."
 
 
 @app.get("/")
