@@ -119,11 +119,8 @@ async def run_gemini(code, language):
         )
         return response.text
     except Exception as e:
-        #  Print the error to your terminal
-        print("\n" + "="*30)
-        print("GEMINI API ERROR REVEALED")
-        print(str(e))
-        print("="*30 + "\n")
+
+        print(f"🚨 CRITICAL GEMINI ERROR: {str(e)} 🚨", flush=True)
 
         return f"⚠️ **AI Review Error**\n\nThe AI encountered an issue. Check your Python terminal/render logs for the exact error message."
 
